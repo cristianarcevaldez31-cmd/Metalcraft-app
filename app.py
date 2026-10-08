@@ -1,9 +1,9 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Metalcraft Catálogo", page_icon="🛠️", layout="wide")
 
-# Renderizado de la interfaz completa con la lógica del HTML y JS integrado
-st.components.v1.html("""
+html_code = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -15,7 +15,7 @@ st.components.v1.html("""
     body {
       background: #020617;
       color: white;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     .glass {
       background: rgba(255, 255, 255, .05);
@@ -78,16 +78,14 @@ st.components.v1.html("""
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <!-- COLUMNA IZQUIERDA: CONTROLES -->
     <div class="space-y-6">
 
-      <!-- Ajustes de Marca de Agua -->
       <div class="glass rounded-3xl p-6 shadow-2xl">
         <div class="flex items-center gap-3 mb-5">
           <div class="bg-cyan-500 p-3 rounded-2xl text-xl">🖼️</div>
           <div>
-            <h2 class="text-2xl font-bold">Ajustes de Marca de Agua</h2>
-            <p id="logoStatus" class="text-xs text-amber-400 mt-1">Cargando logo automático...</p>
+            <h2 class="text-2xl font-bold">Marca de Agua</h2>
+            <p id="logoStatus" class="text-xs text-amber-400 mt-1">Cargando logo...</p>
           </div>
         </div>
 
@@ -108,6 +106,181 @@ st.components.v1.html("""
         </div>
       </div>
 
-      <!-- Creador de Plantilla de Texto -->
-      <div class="glass rounded-3
-      
+      <div class="glass rounded-3xl p-6 shadow-2xl">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="bg-emerald-500 p-3 rounded-2xl text-xl">📝</div>
+          <div>
+            <h2 class="text-2xl font-bold">Generador de Publicaciones</h2>
+            <p class="text-slate-400 text-sm">Plantillas comerciales instantáneas</p>
+          </div>
+        </div>
+
+        <textarea id="keywords" rows="4" placeholder="Escribe los equipos o detalles aquí (ej: Estufa con 2 freidoras y plancha)..." class="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-sm text-white outline-none focus:border-emerald-500"></textarea>
+
+        <button onclick="generateText()" class="w-full mt-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-4 rounded-2xl font-bold transition shadow-lg">
+          ⚙️ Generar Plantilla
+        </button>
+
+        <div id="textSection" class="hidden">
+            <div id="generatedText" class="mt-5 bg-slate-950 border border-slate-800 rounded-2xl p-5 whitespace-pre-wrap text-slate-200 max-h-[300px] overflow-y-auto scroll-style text-xs leading-relaxed"></div>
+            
+            <button id="copyBtn" onclick="copyToClipboard()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2">
+                <span>📋 Copiar Todo el Texto</span>
+            </button>
+            <p id="copyStatus" class="text-center text-xs text-emerald-400 mt-2 opacity-0 transition-opacity">¡Copiado al portapapeles!</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="lg:col-span-2">
+      <div class="glass rounded-3xl p-6 shadow-2xl">
+        <label class="drop-zone rounded-3xl p-10 text-center cursor-pointer block">
+          <div class="text-6xl mb-5">📸</div>
+          <h2 class="text-3xl md:text-4xl font-black mb-3">Subir Imágenes</h2>
+          <p class="text-slate-400 text-base md:text-lg">Toca aquí para seleccionar una o varias fotos de la galería</p>
+          <input type="file" id="imageInput" multiple accept="image/*" class="hidden"/>
+        </label>
+        <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-8"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const imageInput = document.getElementById("imageInput");
+const gallery = document.getElementById("gallery");
+const logoStatus = document.getElementById("logoStatus");
+let logoImage = new Image();
+let logoReady = false;
+
+logoImage.src = "app/static/logo.png";
+logoImage.onload = function() {
+    logoReady = true;
+    logoStatus.innerText = "✅ Logo listo";
+    logoStatus.className = "text-xs text-emerald-400 mt-1";
+};
+logoImage.onerror = function() {
+    logoImage.src = "logo.png";
+    logoImage.onload = function() {
+        logoReady = true;
+        logoStatus.innerText = "✅ Logo listo";
+        logoStatus.className = "text-xs text-emerald-400 mt-1";
+    };
+    logoImage.onerror = function() {
+        logoStatus.innerText = "⚠️ No se encontró 'logo.png'";
+        logoStatus.className = "text-xs text-red-400 mt-1";
+    };
+};
+
+imageInput.addEventListener("change", async function(e){
+  const files = Array.from(e.target.files);
+  if(files.length === 0) return;
+  if(!logoReady){ 
+      alert("No se cargó 'logo.png'. Asegúrate de que exista en tu repositorio."); 
+      return; 
+  }
+  
+  for(const file of files){
+    if(!file.type.startsWith("image/")) continue;
+    await processImage(file);
+  }
+});
+
+async function processImage(file){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = function(event){
+      const img = new Image();
+      img.onload = function(){
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const opacity = parseFloat(document.getElementById("opacityRange").value);
+        ctx.globalAlpha = opacity;
+        
+        const logoWidth = img.width * 0.22;
+        const logoHeight = logoImage.height * (logoWidth / logoImage.width);
+        const position = document.getElementById("positionSelect").value;
+        
+        let x = 20; let y = 20;
+        if(position === "bottom-right"){ x = img.width - logoWidth - 20; y = img.height - logoHeight - 20; }
+        else if(position === "center"){ x = (img.width / 2) - (logoWidth / 2); y = (img.height / 2) - (logoHeight / 2); }
+        else if(position === "bottom-left"){ x = 20; y = img.height - logoHeight - 20; }
+        else if(position === "top-right"){ x = img.width - logoWidth - 20; y = 20; }
+        else if(position === "top-left"){ x = 20; y = 20; }
+        
+        ctx.drawImage(logoImage, x, y, logoWidth, logoHeight);
+        ctx.globalAlpha = 1;
+        
+        canvas.toBlob(function(blob) {
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const card = document.createElement("div");
+          card.className = "bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl";
+          card.innerHTML = '<img src="' + blobUrl + '" class="preview-img"/><div class="p-4 space-y-3"><button class="download-btn w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 py-3 rounded-2xl font-bold">📥 Descargar</button><button class="delete-btn w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 py-3 rounded-2xl font-bold transition">🗑 Eliminar</button></div>';
+            
+          card.querySelector(".download-btn").addEventListener("click", function(){
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            const tiempo = new Date().toISOString().replace(/[-:.]/g, "");
+            a.download = 'metalcraft_' + tiempo + '.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          });
+          
+          card.querySelector(".delete-btn").addEventListener("click", function(){ 
+            card.remove(); 
+            URL.revokeObjectURL(blobUrl);
+          });
+          
+          gallery.appendChild(card);
+          resolve();
+        }, "image/png");
+        
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function generateText(){
+  const input = document.getElementById("keywords").value;
+  if(!input.trim()) return;
+  const lines = input.split("\\n").filter(line => line.trim() !== "");
+  let output = "";
+  lines.forEach(item => {
+    output += '🔥 ' + capitalize(item) + ' METALCRAFT 🔥\\n\\n' +
+              '✅ Dale un toque profesional a tu negocio con nuestros productos de alta calidad.\\n\\n' +
+              '✅ Fabricación resistente y duradera\\n' +
+              '✅ Excelente acabado industrial\\n' +
+              '✅ Ideal para restaurantes y cocinas\\n' +
+              '✅ Materiales de alta resistencia\\n' +
+              '✅ Diseño moderno y funcional\\n\\n' +
+              '🚚 Entregas disponibles\\n' +
+              '📦 Disponible sobre pedido\\n' +
+              '📲 Contáctanos para más información y cotizaciones\\n\\n' +
+              '💰 Aprovecha nuestros precios especiales y equipa tu negocio hoy mismo.\\n\\n' +
+              '#Metalcraft #CocinaIndustrial #AceroInoxidable #Marketplace #Negocio #Restaurantes #EquipamientoIndustrial #CalidadProfesional #MueblesDeAcero #Ventas\\n\\n' +
+              '═══════════════════════════════════════\\n\\n';
+  });
+  document.getElementById("generatedText").innerText = output;
+  document.getElementById("textSection").classList.remove("hidden");
+}
+
+function copyToClipboard() {
+    const textToCopy = document.getElementById("generatedText").innerText;
+    const tempTextArea = document.createElement("textarea");
+    tempTextArea.value = textToCopy;
+    document.body.appendChild(tempTextArea);
+    tempTextArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempTextArea);
+
+    const status = document.getElementById("
