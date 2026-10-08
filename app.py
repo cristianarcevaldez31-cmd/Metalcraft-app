@@ -23,7 +23,7 @@ if uploaded_file is not None:
     if os.path.exists("logo.png"):
         logo = Image.open("logo.png").convert("RGBA")
         
-        # Redimensionar logo al 20% del ancho de la imagen principal
+        # Redimensionar logo al 20% del ancho
         base_width = int(image.width * 0.20)
         w_percent = (base_width / float(logo.width))
         h_size = int((float(logo.height) * float(w_percent)))
@@ -38,21 +38,25 @@ if uploaded_file is not None:
         st.image(watermarked.convert("RGB"), use_column_width=True)
     else:
         st.warning("No se encontró el archivo logo.png en el repositorio.")
-        watermarked = image.convert("RGB")
-        st.image(watermarked, use_column_width=True)
+        watermarked = image.copy()
+        st.image(watermarked.convert("RGB"), use_column_width=True)
 
     # Generación de descripción comercial
     st.subheader("📝 Generar ficha técnica / texto publicitario")
-    detalles = st.text_input("Detalles adicionales (medidas, material, calibre, etc.):", "Acero inoxidable, uso industrial")
+    detalles = st.text_input("Detalles adicionales (medidas, material, calibre, etc.):", "Quemador tipo H")
 
     if st.button("Generar texto con Gemini"):
         with st.spinner("Redactando ficha publicitaria..."):
             try:
-                model = genai.GenerativeModel('gemini-flash-latest')
+                # Convertir a RGB para asegurar compatibilidad con la API
+                image_rgb = watermarked.convert("RGB")
+                
+                model = genai.GenerativeModel('gemini-1.5-flash-latest')
                 prompt = f"Eres un experto en ventas de equipos gastronómicos e industriales de acero de la marca Metalcraft. Genera una publicación atractiva y profesional para redes sociales/WhatsApp basada en la foto adjunta y estos detalles: {detalles}."
-                response = model.generate_content([prompt, image])
-                st.success("¡Texto generado!")
+                
+                response = model.generate_content([prompt, image_rgb])
+                
+                st.success("¡Texto generado con éxito!")
                 st.text_area("Copia tu texto aquí:", value=response.text, height=250)
             except Exception as e:
                 st.error(f"Error al conectar con Gemini: {e}")
-                
