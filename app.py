@@ -1,13 +1,13 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 import os
 
 st.set_page_config(page_title="Metalcraft App", page_icon="🛠️", layout="centered")
 
-# Configurar API Key desde Secrets
+# Configurar API Key desde Secrets con el cliente nuevo
 if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.error("Falta la GEMINI_API_KEY en Secrets de Streamlit.")
 
@@ -48,15 +48,18 @@ if uploaded_file is not None:
     if st.button("Generar texto con Gemini"):
         with st.spinner("Redactando ficha publicitaria..."):
             try:
-                # Convertir a RGB para asegurar compatibilidad con la API
+                # Convertir a RGB para asegurar compatibilidad
                 image_rgb = watermarked.convert("RGB")
                 
-                model = genai.GenerativeModel('gemini-1.5-flash-latest')
                 prompt = f"Eres un experto en ventas de equipos gastronómicos e industriales de acero de la marca Metalcraft. Genera una publicación atractiva y profesional para redes sociales/WhatsApp basada en la foto adjunta y estos detalles: {detalles}."
                 
-                response = model.generate_content([prompt, image_rgb])
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[prompt, image_rgb]
+                )
                 
                 st.success("¡Texto generado con éxito!")
                 st.text_area("Copia tu texto aquí:", value=response.text, height=250)
             except Exception as e:
                 st.error(f"Error al conectar con Gemini: {e}")
+                
