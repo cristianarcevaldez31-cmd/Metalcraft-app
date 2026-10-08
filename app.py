@@ -48,7 +48,7 @@ if uploaded_file is not None:
     if st.button("Generar texto con Gemini"):
         with st.spinner("Redactando ficha publicitaria..."):
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-flash-latest')
                 prompt = f"Eres un experto en ventas de equipos gastronómicos e industriales de acero de la marca Metalcraft. Genera una publicación atractiva y profesional para redes sociales/WhatsApp basada en la foto adjunta y estos detalles: {detalles}."
                 response = model.generate_content([prompt, image])
                 st.success("¡Texto generado!")
