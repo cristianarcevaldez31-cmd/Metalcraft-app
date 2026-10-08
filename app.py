@@ -5,7 +5,7 @@ import os
 
 st.set_page_config(page_title="Metalcraft App", page_icon="🛠️", layout="centered")
 
-# Configurar API Key desde Secrets con el cliente nuevo
+# Configurar API Key desde Secrets con el cliente de google-genai
 if "GEMINI_API_KEY" in st.secrets:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
@@ -43,23 +43,30 @@ if uploaded_file is not None:
 
     # Generación de descripción comercial
     st.subheader("📝 Generar ficha técnica / texto publicitario")
-    detalles = st.text_input("Detalles adicionales (medidas, material, calibre, etc.):", "Quemador tipo H")
+    detalles = st.text_input("Detalles adicionales (medidas, material, calibre, etc.):", "Estufa 2 freidoras y plancha")
 
     if st.button("Generar texto con Gemini"):
         with st.spinner("Redactando ficha publicitaria..."):
-            try:
-                # Convertir a RGB para asegurar compatibilidad
-                image_rgb = watermarked.convert("RGB")
-                
-                prompt = f"Eres un experto en ventas de equipos gastronómicos e industriales de acero de la marca Metalcraft. Genera una publicación atractiva y profesional para redes sociales/WhatsApp basada en la foto adjunta y estos detalles: {detalles}."
-                
-                response = client.models.generate_content(
-                    model='gemini-3.8-flash',
-                    contents=[prompt, image_rgb]
-                )
-                
-                st.success("¡Texto generado con éxito!")
-                st.text_area("Copia tu texto aquí:", value=response.text, height=250)
-            except Exception as e:
-                st.error(f"Error al conectar con Gemini: {e}")
+            image_rgb = watermarked.convert("RGB")
+            prompt = f"Eres un experto en ventas de equipos gastronómicos e industriales de acero de la marca Metalcraft. Genera una publicación atractiva y profesional para redes sociales/WhatsApp basada en la foto adjunta y estos detalles: {detalles}."
+            
+            # Intenta primero con gemini-3.8-flash y si está saturado cambia a gemini-2.5-flash
+            modelos = ['gemini-3.8-flash', 'gemini-2.5-flash']
+            
+            respuesta_exitosa = False
+            for model_id in modelos:
+                try:
+                    response = client.models.generate_content(
+                        model=model_id,
+                        contents=[prompt, image_rgb]
+                    )
+                    st.success("¡Texto generado con éxito!")
+                    st.text_area("Copia tu texto aquí:", value=response.text, height=250)
+                    respuesta_exitosa = True
+                    break
+                except Exception as e:
+                    continue
+            
+            if not respuesta_exitosa:
+                st.error("Los servidores de Google están experimentando alta demanda. Presiona el botón de nuevo en un momento.")
                 
